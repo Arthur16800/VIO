@@ -174,8 +174,23 @@ module.exports = class eventoController {
       return res.status(500).json({ error: "Erro ao buscar eventos" });
     }
   }
-  static async evento7dias(req, res) {
-    const data = req.params.data;
-    const query = ` SELECT * FROM evento WHERE data_hora BETWEEN ? AND ? ORDER BY data_hora ASC`;
+  static async getEventosSemana(req, res) {
+    let diaInicio = req.params.data;
+    diaInicio = new Date(diaInicio).toISOString().split("T")[0];
+    const query = `SELECT * FROM evento WHERE TIMESTAMPDIFF(DAY, ?, data_hora) BETWEEN 0 AND 6 ORDER BY data_hora ASC`;
+    try {
+      connect.query(query, diaInicio, (err, results) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "Erro Interno de Servidor" });
+        }
+        return res
+          .status(200)
+          .json({ message: "Busca concluida:", eventos: results });
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro Interno de Servidor" });
+    }
   }
 };
