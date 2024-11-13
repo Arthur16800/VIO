@@ -120,4 +120,102 @@ module.exports = class eventoController {
       }
     }
   }
+
+  static async getEventosPorData(req, res) {
+    const query = `SELECT * FROM evento`;
+
+    try {
+      connect.query(query, (err, results) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "Erro ao buscar eventos" });
+        }
+        const dataEvento = new Date(results[0].data_hora);
+        const dia = dataEvento.getDate();
+        const mes = dataEvento.getMonth() + 1; //janeiro é 0 e dezembro é 11 tenho que somar mais 1
+        const ano = dataEvento.getFullYear();
+        console.log(dia + "/" + mes + "/" + ano);
+
+        const now = new Date();
+        const eventosPassados = results.filter(
+          (evento) => new Date(evento.data_hora) < now
+        );
+        const eventosFuturos = results.filter(
+          (evento) => new Date(evento.data_hora) >= now
+        );
+
+        const diferencaMs =
+          eventosFuturos[0].data_hora.getTime() - now.getTime();
+        const dias = Math.floor(diferencaMs / (1000 * 60 * 60 * 24)); // 1000 por causa do mls, 60 seg, 60 min, 24 hr, vira um dia
+        const horas = Math.floor(
+          (diferencaMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        );
+        console.log(
+          diferencaMs,
+          "Falta:" + dias + " dias e " + horas + " horas"
+        );
+
+        // Comparando datas
+        const dataFiltro = new Date("2024-12-15").toISOString().split("T");
+        const eventosDia = results.filter(
+          (evento) =>
+            new Date(evento.data_hora).toISOString().split("T")[0] ===
+            dataFiltro[0]
+        ); // cada registro do results eu chamo de evento
+
+        console.log("Eventos: ", eventosDia);
+
+        return res
+          .status(200)
+          .json({ message: "OK", eventosPassados, eventosFuturos });
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro ao buscar eventos" });
+    }
+  }
+
+  static async getEventosProximos7Dias(req, res) {
+    const { data_inicial } = req.params; // Obtém a data inicial via parâmetro da URL
+    
+    // Valida se a data fornecida é válida
+    if (!moment(data_inicial, "YYYY-MM-DD", true).isValid()) {
+      return res.status(400).json({ error: "Data inválida! Use o formato YYYY-MM-DD." });
+    }
+
+    // Calculando a data final (7 dias após a data fornecida)
+    const dataInicial = moment(data_inicial).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+    const dataFinal = moment(data_inicial).add(7, "days").endOf("day").format("YYYY-MM-DD HH:mm:ss");
+
+    // Query SQL para buscar os eventos dentro do intervalo de 7 dias
+    const query = `
+      SELECT * FROM evento 
+      WHERE data_hora BETWEEN ? AND ?
+      ORDER BY data_hora ASC
+    `;
+
+    try {
+      connect.query(query, [dataInicial, dataFinal], (err, results) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "Erro ao buscar eventos." });
+        }
+
+        // Se não encontrar eventos, retorna uma mensagem informando
+        if (results.length === 0) {
+          return res.status(404).json({ message: "Nenhum evento encontrado para os próximos 7 dias." });
+        }
+
+        // Caso contrário, retorna os eventos encontrados
+        return res.status(200).json({
+          message: "Eventos encontrados nos próximos 7 dias",
+          eventos: results
+        });
+      });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: "Erro interno do servidor." });
+    }
+  }
+  
 };

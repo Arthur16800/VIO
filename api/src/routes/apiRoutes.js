@@ -22,6 +22,10 @@ router.post('/evento', eventoController.createEvento);
 router.get('/evento', eventoController.getAllEventos);
 router.put('/evento', eventoController.updateEvento);
 router.delete('/evento/:id', eventoController.deleteEvento);
+router.get('/evento/data', eventoController.getEventosPorData);
+router.get("/eventos/proximos/:data_inicial", eventoController.getEventosProximos7Dias);
+
+
 
 // Rotas ingressoController
 router.post('/ingresso', ingressoController.createIngresso);
